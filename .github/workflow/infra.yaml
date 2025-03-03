@@ -1,0 +1,116 @@
+name: Infra Provisioning through Terraform
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy (e.g., dev, staging, prod)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write   
+  id-token: write  
+
+jobs:
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout Repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Remove Any Pre-installed Terraform Versions
+      - name: Remove Pre-installed Terraform (Fixes chdir issue)
+        run: |
+          sudo rm -f $(which terraform) || true
+          rm -rf ~/.terraform.d/plugin-cache || true
+          sudo rm -rf /usr/local/bin/terraform
+          sudo rm -rf /home/runner/.terraform.d/
+
+      # Step 3: Set up Terraform (Explicit Version)
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7  # Ensures Terraform version supports latest flags
+
+      # Step 4: Verify Terraform Version & Binary Path
+      - name: Verify Terraform Version
+        run: |
+          echo "Terraform Version:"
+          terraform version
+          echo "Terraform Binary Path:"
+          which terraform
+
+      # Step 5: Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
+          role-session-name: GitHubActions
+          aws-region: us-east-1
+
+      # Step 6: Install TFLint (Terraform Linter)
+      - name: Install TFLint
+        run: |
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+          tflint --version  # Verify the installed version
+
+      # Step 7: Run TFLint
+      - name: Run TFLint
+        run: |
+          cd infra/
+          tflint --init
+          tflint
+
+      # Step 8: Initialize Terraform (Fixed - Removed -chdir)
+      - name: Terraform Init
+        run: |
+          cd infra/
+          terraform init -backend-config=../environment/.backend
+
+      # Step 9: Validate Terraform Configuration
+      - name: Terraform Validate
+        run: |
+          cd infra/
+          terraform validate
+
+      # Step 10: Set Deployment Environment Variable (Fix for Push & PR)
+      - name: Set Deployment Environment
+        run: echo "DEPLOY_ENV=${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_ENV
+
+      # Step 11: Terraform Plan
+      - name: Terraform Plan
+        run: |
+          cd infra/
+          terraform plan -var-file=environment/dev.tfvars -out=tfplan
+
+      # Step 12: Terraform Apply (Only on Push)
+      - name: Terraform Apply
+        if: github.event_name == 'push'
+        run: |
+          cd infra/
+          terraform apply -auto-approve tfplan
+
+      # Step 13: Terraform Destroy (Only if manually triggered with "destroy")
+      - name: Terraform Destroy
+        if: github.event_name == 'workflow_dispatch' && env.DEPLOY_ENV == 'destroy'
+        run: |
+          cd infra/
+          terraform destroy -auto-approve -var-file=../environment/dev.tfvars

@@ -5,7 +5,7 @@ FROM public.ecr.aws/lambda/nodejs:18
 WORKDIR /var/task
 
 # Copy package.json and install dependencies (if needed)
-COPY backend/package.json package.json
+COPY backend/package.js package.js
 RUN npm install
 
 # Copy the Lambda function code

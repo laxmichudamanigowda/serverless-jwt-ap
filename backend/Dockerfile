@@ -5,11 +5,11 @@ FROM public.ecr.aws/lambda/nodejs:18
 WORKDIR /var/task
 
 # Copy package.json and install dependencies (if needed)
-COPY package.json package.json
+COPY backend/package.json package.json
 RUN npm install
 
 # Copy the Lambda function code
-COPY index.js index.js
+COPY backend/index.js index.js
 
 # Set the Lambda function handler (index.js exports `handler`)
 CMD ["index.handler"]

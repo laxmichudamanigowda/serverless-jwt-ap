@@ -12,6 +12,7 @@ on:
           - dev
           - staging
           - prod
+          - destroy
 
   push:
     branches:
@@ -79,7 +80,7 @@ jobs:
           tflint --init
           tflint
 
-      # Step 8: Initialize Terraform (Fixed - Removed -chdir)
+      # Step 8: Initialize Terraform
       - name: Terraform Init
         run: |
           cd infra/
@@ -91,19 +92,21 @@ jobs:
           cd infra/
           terraform validate
 
-      # Step 10: Set Deployment Environment Variable (Fix for Push & PR)
+      # Step 10: Set Deployment Environment Variable
       - name: Set Deployment Environment
-        run: echo "DEPLOY_ENV=${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_ENV
+        run: |
+          echo "DEPLOY_ENV=${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_ENV
 
-      # Step 11: Terraform Plan
+      # Step 11: Terraform Plan (Only if not destroy)
       - name: Terraform Plan
+        if: env.DEPLOY_ENV != 'destroy'
         run: |
           cd infra/
-          terraform plan -var-file=environment/dev.tfvars -out=tfplan
+          terraform plan -var-file=environment/${{ env.DEPLOY_ENV }}.tfvars -out=tfplan
 
-      # Step 12: Terraform Apply (Only on Push)
+      # Step 12: Terraform Apply (Only on Push and Not Destroy)
       - name: Terraform Apply
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && env.DEPLOY_ENV != 'destroy'
         run: |
           cd infra/
           terraform apply -auto-approve tfplan
@@ -113,4 +116,4 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && env.DEPLOY_ENV == 'destroy'
         run: |
           cd infra/
-          terraform destroy -auto-approve -var-file=../environment/dev.tfvars
+          terraform destroy -auto-approve -var-file=environment/${{ env.DEPLOY_ENV }}.tfvars

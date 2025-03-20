@@ -3,8 +3,8 @@
   "networkMode": "awsvpc",
   "executionRoleArn": "arn:aws:iam::418272767856:role/ecsTaskExecutionRole",
   "taskRoleArn": "arn:aws:iam::418272767856:role/ecsTaskExecutionRole",
-  "requiresCompatibilities": ["FARGATE"],  // ✅ Required for Fargate
-  "cpu": "256",  // ✅ Fargate requires explicit CPU & memory
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
   "memory": "512",
   "containerDefinitions": [
     {
@@ -17,7 +17,7 @@
           "containerPort": 80,
           "protocol": "tcp"
         }
-      ]
+      ],
       "essential": true
     }
   ]

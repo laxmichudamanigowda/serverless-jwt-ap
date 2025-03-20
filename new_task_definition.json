@@ -1,21 +1,24 @@
 {
-    "family": "my-task-family",
-    "networkMode": "awsvpc",
-    "executionRoleArn": "arn:aws:iam::418272767856:role/ecsTaskExecutionRole",
-    "containerDefinitions": [
+  "family": "my-task-family",
+  "networkMode": "awsvpc",
+  "executionRoleArn": "arn:aws:iam::418272767856:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::418272767856:role/ecsTaskExecutionRole",
+  "requiresCompatibilities": ["FARGATE"],  // ✅ Required for Fargate
+  "cpu": "256",  // ✅ Fargate requires explicit CPU & memory
+  "memory": "512",
+  "containerDefinitions": [
+    {
+      "name": "my-container",
+      "image": "public.ecr.aws/g2o6o8n9/my_ecr_repository:latest",
+      "memory": 512,
+      "cpu": 256,
+      "portMappings": [
         {
-            "name": "my-container",
-            "image": "public.ecr.aws/g2o6o8n9/my_ecr_repository:b88f5c00ab7e3ef0812a62ce6fb8fd2c09e1d42e",
-            "memory": 512,
-            "cpu": 256,
-            "portMappings": [
-                {
-                    "containerPort": 80,
-                    "hostPort": 80,
-                    "protocol": "tcp"
-                }
-            ],
-            "essential": true
+          "containerPort": 80,
+          "protocol": "tcp"
         }
-    ]
+      ],
+      "essential": true
+    }
+  ]
 }
